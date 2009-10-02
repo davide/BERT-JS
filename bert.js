@@ -406,6 +406,45 @@ BertClass.prototype.bytes_to_string = function(Arr) {
 	return s;
 }
 
+// Convert a BERT object to a JSON object - follows
+// roughly with mochiweb's mochijson module for
+// conversion of erlang terms to JSON
+BertClass.prototype.toJSON = function(Obj) {
+  if (typeof(Obj) == 'string') {
+    // Convert strings back to lists - real strings should
+    // be sent as binary
+    var Arr = new Array();
+    for (var i = 0; i < Obj.length; i++) {
+      Arr.push(Obj.charCodeAt(i));
+    }
+    return Arr;
+  } else if (typeof(Obj) != 'object') {
+    // JS primitive
+    return Obj;
+  } else if (Obj.type == 'Tuple' && Obj.length == 1 && Obj[0].length == 1) {
+    // Convert proplists into JS objects
+    var Proplist = Obj[0][0];
+    var Hash = {};
+    for (var i = 0; i < Proplist.length; i++) {
+      var Entry = Proplist[i][0];
+      var Key = Entry[0].value;
+      Hash[Key] = Bert.toJSON(Entry[1]);
+    }
+    return Hash;
+  } else if (Obj.type == 'Atom' && Obj.value == "null") {
+    // null atom maps to null value
+    return null;
+  } else if (Obj.length > 0 && !Obj['type']) {
+    // JS arrays - map each element
+    var Arr = new Array();
+    for (var i = 0; i < Obj.length; i++) {
+      Arr.push(Bert.toJSON(Obj[i]));
+    }
+    return Arr;
+  }
+  return Obj.value;
+}
+
 // - TESTING -
 
 // Pretty Print a byte-string in Erlang binary form.
