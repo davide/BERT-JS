@@ -205,8 +205,8 @@ BertClass.prototype.decode_inner = function(S) {
 	if (Type == this.SMALL_ATOM) return this.decode_atom(S, 1);
 	if (Type == this.ATOM) return this.decode_atom(S, 2);
 	if (Type == this.BINARY) return this.decode_binary(S);
-	if (Type == this.SMALL_INTEGER) return this.decode_integer(S, 1);
-	if (Type == this.INTEGER) return this.decode_integer(S, 4);
+	if (Type == this.SMALL_INTEGER) return this.decode_integer(S, 1, false);
+	if (Type == this.INTEGER) return this.decode_integer(S, 4, true);
 	if (Type == this.SMALL_BIG) return this.decode_big(S, 1);
 	if (Type == this.LARGE_BIG) return this.decode_big(S, 4);
 	if (Type == this.FLOAT) return this.decode_float(S);
@@ -219,7 +219,7 @@ BertClass.prototype.decode_inner = function(S) {
 }
 
 BertClass.prototype.decode_atom = function(S, Count) { 
-	var Size = this.bytes_to_int(S, Count);
+	var Size = this.bytes_to_unsigned_int(S, Count);
 	S = S.substring(Count);
 	var Value = S.substring(0, Size);
 	if (Value == "true") Value = true;
@@ -231,7 +231,7 @@ BertClass.prototype.decode_atom = function(S, Count) {
 }
 
 BertClass.prototype.decode_binary = function(S) { 
-	var Size = this.bytes_to_int(S, 4);
+	var Size = this.bytes_to_unsigned_int(S, 4);
 	S = S.substring(4);
 	return {
 		value: Bert.binary(S.substring(0, Size)),
@@ -239,8 +239,8 @@ BertClass.prototype.decode_binary = function(S) {
 	};	
 }
 
-BertClass.prototype.decode_integer = function(S, Count) { 
-	var Value = this.bytes_to_int(S, Count);
+BertClass.prototype.decode_integer = function(S, Count, Signed) { 
+	var Value = this.bytes_to_int(S, Count, Signed);
 	S = S.substring(Count);
 	return {
 		value: Value,
@@ -267,7 +267,7 @@ BertClass.prototype.decode_float = function(S) {
 }
 
 BertClass.prototype.decode_string = function(S) { 
-	var Size = this.bytes_to_int(S, 2);
+	var Size = this.bytes_to_unsigned_int(S, 2);
 	S = S.substring(2);
 	return {
 		value: S.substring(0, Size),
@@ -294,7 +294,7 @@ BertClass.prototype.decode_list = function(S) {
 }
 
 BertClass.prototype.decode_tuple = function(S, Count) { 
-	var Size = this.bytes_to_int(S, Count);
+	var Size = this.bytes_to_unsigned_int(S, Count);
 	S = S.substring(Count);
 	var Arr = new Array();
 	for (var i=0; i<Size; i++) {
@@ -340,9 +340,9 @@ BertClass.prototype.int_to_bytes = function(Int, Length) {
 
 // Read a big-endian encoded integer from the first Length bytes
 // of the supplied string.
-BertClass.prototype.bytes_to_int = function(S, Length) {
+BertClass.prototype.bytes_to_int = function(S, Length, Signed) {
 	var Num = 0;
-	var isNegative = (String.charCodeAt(S[0]) > 128);
+	var isNegative = (Signed && String.charCodeAt(S[0]) > 128);
 	for (var i=0; i<Length; i++) {
 		var n = String.charCodeAt(S[i]);
 		if (isNegative) n = 255 - n;
@@ -351,6 +351,13 @@ BertClass.prototype.bytes_to_int = function(S, Length) {
 	}	
 	if (isNegative) Num = ~Num;
 	return Num;
+}
+
+BertClass.prototype.bytes_to_unsigned_int = function(S, Length) {
+    return Bert.bytes_to_int(S, Length, false);
+}
+BertClass.prototype.bytes_to_signed_int = function(S, Length) {
+    return Bert.bytes_to_int(S, Length, true);
 }
 
 // Encode an integer into an Erlang bignum,
