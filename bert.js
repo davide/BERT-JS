@@ -421,20 +421,27 @@ BertClass.prototype.toJSON = function(Obj) {
   } else if (typeof(Obj) != 'object') {
     // JS primitive
     return Obj;
-  } else if (Obj.type == 'Tuple' && Obj.length == 1 && Obj[0].length == 1) {
+  }
+  if ((Obj instanceof Array) && (Obj.length > 0)) {
     // Convert proplists into JS objects
-    var Proplist = Obj[0][0];
+    var Proplist = Obj;
     var Hash = {};
-    for (var i = 0; i < Proplist.length; i++) {
-      var Entry = Proplist[i][0];
-      var Key = Entry[0].value;
-      Hash[Key] = Bert.toJSON(Entry[1]);
+	var i = 0;
+    for (; i < Proplist.length; i++) {
+      var Entry = Proplist[i];
+	  if ((Entry.type != 'Tuple') || (Entry.length != 2))
+		break;
+	  var Key = Entry[0].value;
+	  Hash[Key] = Bert.toJSON(Entry[1]);
     }
-    return Hash;
-  } else if (Obj.type == 'Atom' && Obj.value == "null") {
+	if (i == Proplist.length)
+		return Hash;
+  }
+  if (Obj.type == 'Atom' && Obj.value == "null") {
     // null atom maps to null value
     return null;
-  } else if (Obj.length > 0 && !Obj['type']) {
+  }
+  if (Obj instanceof Array) {
     // JS arrays - map each element
     var Arr = new Array();
     for (var i = 0; i < Obj.length; i++) {
@@ -442,6 +449,7 @@ BertClass.prototype.toJSON = function(Obj) {
     }
     return Arr;
   }
+  // Tuples
   return Obj.value;
 }
 
